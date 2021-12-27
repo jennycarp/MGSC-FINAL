@@ -1,0 +1,395 @@
+---
+title: "Final Project"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r cars}
+summary(cars)
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+
+```{r}
+library('tidyverse')
+library('dplyr')
+library('ISLR')
+library('forcats')
+library('tidyr')
+bechdel <-
+  read_csv(file = 'bechdel_clean.csv')
+```
+```{r}
+bechdel_clean <-
+  bechdel
+bechdel_clean <- mutate(filter(bechdel_clean, rowSums(is.na(bechdel_clean)) != ncol(bechdel_clean)))
+glimpse(bechdel_clean)
+```
+
+```{r}
+bechdel_clean <-
+  bechdel %>%
+  mutate(budget = as.numeric(budget))
+```
+```{r}
+bechdel_clean <-
+  bechdel %>%
+  mutate(domgross = as.numeric(domgross))
+```
+
+
+
+```{r}
+bechdel_clean <-
+  bechdel %>%
+  mutate(intgross = as.numeric(intgross))
+typeof(bechdel_clean$budget)
+typeof(bechdel_clean$intgross)
+typeof(bechdel_clean$domgross)
+bechdel_clean <-
+  bechdel %>%
+  mutate(binary = factor(binary))
+typeof(bechdel_clean$binary)
+
+```
+```{r}
+bechdel_clean <-
+  bechdel %>%
+  mutate(log_intgross = log(intgross))
+```
+```{r}
+bechdel_clean <-
+  bechdel %>%
+  mutate(log_domgross = log(domgross))
+```
+
+
+```{r}
+glimpse(bechdel_clean)
+```
+
+```{r}
+mean(bechdel$budget)
+mean(bechdel$intgross)
+mean(bechdel$domgross)
+mean(bechdel$`budget_2013$`)
+mean(bechdel$`domgross_2013$`)
+mean(bechdel$`intgross_2013$`)
+```
+
+```{r}
+min(bechdel$budget)
+min(bechdel$intgross)
+min(bechdel$domgross)
+min(bechdel$`budget_2013$`)
+min(bechdel$`domgross_2013$`)
+min(bechdel$`intgross_2013$`)
+```
+```{r}
+max(bechdel$budget)
+max(bechdel$intgross)
+max(bechdel$domgross)
+max(bechdel$`budget_2013$`)
+max(bechdel$`domgross_2013$`)
+max(bechdel$`intgross_2013$`)
+```
+```{r}
+library('ggplot2')
+ggplot(bechdel_clean, aes(budget,domgross,fill=binary))+geom_point(alpha=0.1)+theme_minimal()
+```
+
+```{r}
+ggplot(bechdel_clean, aes(domgross,director_gender,fill=binary,color=binary))+geom_count(alpha=0.1)
+```
+```{r}
+ggplot(bechdel, aes(budget,binary,fill=writer_gender, color=writer_gender))+geom_count(alpha=0.1)+theme_minimal()
+```
+```{r}
+set.seed(1818)
+library('rsample')
+library('ggplot2')
+```
+
+```{r}
+bechdel_split <- initial_split(bechdel_clean, prop = 0.75)
+bechdel_train <- training(bechdel_split)
+bechdel_test <- testing(bechdel_split)
+```
+
+```{r}
+bechdellm <- lm(domgross ~ director_gender + star_gender + writer_gender + budget,
+           data = bechdel_clean)
+summary(bechdellm)
+```
+
+```{r}
+library('ggplot2')
+lrg <- ggplot(bechdellm, aes(x=budget,y=domgross))+geom_point()+geom_smooth()+theme_minimal()
+lrg
+
+```
+```{r}
+lrg2 <- ggplot(bechdellm, aes(x=director_gender,y=domgross,alpha=0.4))+geom_point()+geom_smooth()+theme_minimal()
+lrg2
+```
+
+```{r}
+library(rpart)
+library(rpart.plot)
+library('randomForest')
+
+```
+```{r}
+glimpse(bechdel_clean)
+```
+```{r}
+ rf_mods<-list()
+oob_err <- NULL
+test_err <- NULL
+rt_fit_bechdel <- randomForest(budget ~ director_gender + star_gender +
+                                 writer_gender,
+                               data = bechdel_clean,
+                               type = classification,
+                               mtry = 4,
+                               na.action = na.omit,
+                               ntree = 200,
+                               importance = TRUE)
+                               
+                        
+                               
+```
+
+```{r}
+plot(rt_fit_bechdel)
+```
+
+```{r}
+inbag <- predict(rt_fit_bechdel, bechdel_train, type="response",
+                 norm.votes=TRUE, predict.all=FALSE,proximity=FALSE,
+                 nodes=FALSE)
+outbag <- predict(rt_fit_bechdel, type="response",
+                  norm.votes=TRUE, predict.all=FALSE, proximity=FALSE,
+                  nodes=FALSE)
+testpred <- predict(rt_fit_bechdel, bechdel_test, type="response",
+                    norm.votes=TRUE, predict.all=FALSE,proximity=FALSE,
+                    nodes=FALSE)
+```
+```{r}
+varImpPlot(rt_fit_bechdel,type=1)
+```
+```{r error=TRUE}
+library('party')
+library('randomForest')
+getTree(randomForest(bechdel_clean[,-5], bechdel_clean[,5], ntree=10), 3, labelVar=TRUE)
+```
+```{r}
+library(randomForestExplainer)
+plot_min_depth_distribution(rt_fit_bechdel)
+```
+
+```{r}
+library('ISLR')
+logit_bechdel <- glm(binary ~ director_gender+writer_gender+ star_gender+budget,family=binomial,data=bechdel_clean)
+exp(logit_bechdel$coefficients)
+```
+```{r}
+logit_bechdel
+```
+
+```{r}
+ rf_mods<-list()
+oob_err <- NULL
+test_err <- NULL
+rt_fit_bechdel2 <- randomForest(binary ~ director_gender + star_gender +
+                                 writer_gender+budget,
+                               data = bechdel_clean,
+                               type = classification,
+                               mtry = 2,
+                               na.action = na.omit,
+                               ntree = 50,
+                               importance = TRUE)
+plot(rt_fit_bechdel2)
+```
+```{r}
+inbag <- predict(rt_fit_bechdel2, bechdel_train, type="response",
+                 norm.votes=TRUE, predict.all=FALSE,proximity=FALSE,
+                 nodes=FALSE)
+outbag <- predict(rt_fit_bechdel2, type="response",
+                  norm.votes=TRUE, predict.all=FALSE, proximity=FALSE,
+                  nodes=FALSE)
+testpred <- predict(rt_fit_bechdel2, bechdel_test, type="response",
+                    norm.votes=TRUE, predict.all=FALSE,proximity=FALSE,
+                    nodes=FALSE)
+```
+
+```{r}
+varImpPlot(rt_fit_bechdel2,type=1)
+```
+```{r}
+library(tidyverse)
+glimpse(bechdel_clean)
+```
+```{r}
+```
+
+#New Models:
+
+```{r}
+bechdel_clean <-
+  bechdel_clean %>%
+  mutate(log_domgross = log(domgross),
+         log_budget = log(budget),
+         log_intgross = log(intgross))
+bechdel_clean %>% glimpse()
+```
+```{r}
+bechdellm1 <- lm(log_domgross ~ binary + year + director_gender + star_gender + writer_gender + log_budget,
+           data = bechdel_clean)
+summary(bechdellm1)
+```
+```{r}
+ 
+```
+
+```{r}
+ 
+```
+
+```{r}
+ 
+```
+
+```{r}
+bechdellm2 <- lm(log_intgross ~ binary + year + director_gender + star_gender + writer_gender + log_budget,
+           data = bechdel_clean)
+summary(bechdellm2)
+```
+```{r}
+ 
+```
+
+```{r}
+bechdellogit3 <- glm(binary ~ year + director_gender + star_gender + writer_gender + log_budget,
+                     family = binomial,
+                     data = bechdel_clean)
+summary(bechdellogit3)
+```
+```{r}
+#actual mse
+mean(bechdellogit3$residuals^2)
+```
+```{r}
+library('rsample')
+set.seed(1234)
+bechdel_split <- initial_split(bechdel_clean)
+bechdel_train <- training(bechdel_split)
+bechdel_test <- testing(bechdel_split)
+```
+
+```{r}
+#Loss functions for bechdellogit3
+preds_train <- predict(bechdellogit3, newdata = bechdel_train)
+preds_test <- predict(bechdellogit3, newdata = bechdel_test)
+
+results_train <- data.frame(
+  `truth` = bechdel_train   %>% select(binary) %>% 
+    mutate(binary = as.numeric(binary)),
+  `Class1` =  preds_train,
+  `type` = rep("train",length(preds_train))
+)
+
+results_test <- data.frame(
+  `truth` = bechdel_test   %>% select(binary) %>% 
+    mutate(binary = as.numeric(binary)),
+  `Class1` =  preds_test,
+  `type` = rep("test",length(preds_test))
+)
+
+results <- bind_rows(results_train,results_test)
+```
+
+```{r}
+ bechdel_logit3 <- glm(binary ~ year + director_gender + star_gender + writer_gender + log_budget,
+                     family = binomial,
+                     data = bechdel_clean)
+```
+
+```{r}
+library('ISLR')
+exp(bechdel_logit3$coefficients %>% round(6))
+```
+```{r}
+library('plotROC')
+library('ggplot2')
+
+p_train <- ggplot(results_train,
+            aes(m= Class1, d = binary)) +
+  geom_roc(labelsize = 3.5,
+           cutoffs.at = c(0.99,0.9,0.7,0.5,0.3,0.1,0)) +
+  theme_minimal(base_size = 16)
+print(p_train)
+```
+```{r}
+p_test <- ggplot(results_test,
+            aes(m= Class1, d = binary)) +
+  geom_roc(labelsize = 3.5,
+           cutoffs.at = c(0.99,0.9,0.7,0.5,0.3,0.1,0)) +
+  theme_minimal(base_size = 16)
+print(p_test)
+```
+
+```{r}
+calc_auc(p_train)
+```
+
+```{r}
+calc_auc(p_test)
+```
+
+
+```{r}
+library('sjPlot')
+plot_model(bechdellogit3)
+```
+```{r}
+library('tidymodels')
+tidy(bechdellogit3)
+```
+
+```{r}
+ rf_mods<-list()
+oob_err <- NULL
+test_err <- NULL
+rt_fit_bechdel4 <- randomForest(binary ~ director_gender + star_gender +
+                                 writer_gender + year + budget + domgross + intgross,
+                               data = bechdel_clean,
+                               type = classification,
+                               mtry = 4,
+                               na.action = na.omit,
+                               ntree = 200,
+                               importance = TRUE)
+                               
+ plot(rt_fit_bechdel4)                
+```
+```{r}
+varImpPlot(rt_fit_bechdel4,type=1)
+```
+
+
